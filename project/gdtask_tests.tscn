@@ -8,5 +8,9 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-text = "Current Text"
+bbcode_enabled = true
+text = "[center][color=gold]GDTask Testing Scene[/color][/center]
+[center]check console for output[/center]"
+scroll_active = false
+context_menu_enabled = true
 script = ExtResource("1_trj4p")
