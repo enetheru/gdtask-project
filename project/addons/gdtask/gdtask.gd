@@ -269,6 +269,7 @@ class Timeout extends GDTask:
 #region Factory functions for specialisations
 
 ## WaitUntil
+# waits till the result of the callable evaluates to true before completing
 static func WaitUntil( _callable : Callable, _bindings : Array = [] ) -> GDTask:
 	var task = Watcher.new( _callable, _bindings )
 	task.run()
