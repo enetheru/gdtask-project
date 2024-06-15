@@ -45,12 +45,12 @@ var previous : GDTask
 ## by default the constructor does not action the callable, it simply creates the object.
 func _init( _callable: Callable, _bindings : Array = [] ):
 	next_id += 1
-	
+
 	id = next_id
 	status = Status.PENDING
 	callable = _callable
 	bindings = _bindings
-	
+
 	#DEBUG PRINT
 	#if callable.is_custom():
 		#print("gdtask(%s) initialised | %s( %s ) " % [id,"<anonymous lambda>",bindings] )
@@ -73,7 +73,7 @@ func run() -> void:
 		_:
 			finished.emit( status )
 			return
-		
+
 	if previous && previous.status == Status.PENDING:
 		await previous.run()
 		if previous.status == Status.CANCELLED:
@@ -86,16 +86,16 @@ func run() -> void:
 	#var method_name = "%s" % callable.get_method() if callable.is_standard() else "lambda"
 	#var _indent = Util.printy( "run()", [], self )
 	#Util.printy( "\t%s.%s( %s ) )", [object, method_name , bindings] )
-	
+
 	# Run our task
 	product = await callable.callv( bindings )
-	
+
 	if status != Status.CANCELLED: status = Status.COMPLETED
-	
+
 	finished.emit( status )
 	completed.emit( product )
 	if status == Status.CANCELLED: return
-	
+
 	# if there is a next task, run it
 	if next:
 		# TODO it might be better to attach the product at the end of the bindings.
@@ -154,7 +154,7 @@ class Watcher extends GDTask:
 			finished.emit( status )
 			scene_tree.process_frame.disconnect( watcher )
 			if next: next.run()
-	
+
 	func _on_started():
 		if scene_tree: scene_tree.process_frame.connect( watcher )
 		else: cancel()
@@ -168,13 +168,13 @@ class Watcher extends GDTask:
 class NextFrame extends GDTask:
 	var scene_tree : SceneTree
 	var start_frame : int
-	
+
 	func cleanup( _status ):
 		scene_tree.process_frame.disconnect( run )
-	
+
 	func run():
 		if scene_tree.get_frame() >= start_frame+1: super.run()
-		
+
 	func _init( _callable : Callable, _bindings : Array = [] ):
 		super._init( _callable, _bindings )
 		scene_tree = Engine.get_main_loop() as SceneTree
@@ -187,14 +187,14 @@ class Repeater extends GDTask:
 	var scene_tree : SceneTree
 	var seconds : float
 	var ntimes : int = -1
-	
+
 	func run() -> void:
 		match status:
 			Status.PENDING:		status = Status.INPROGRESS
 			Status.CANCELLED:	finished.emit( status )
 			Status.COMPLETED:	finished.emit( status )
 			Status.INPROGRESS:	pass
-			
+
 		if previous && previous.status == Status.PENDING:
 			await previous.run()
 			if previous.status == Status.CANCELLED:
@@ -207,13 +207,13 @@ class Repeater extends GDTask:
 		#var method_name = "%s" % callable.get_method() if callable.is_standard() else "lambda"
 		#var _indent = Util.printy( "run()", [], self )
 		#Util.printy( "\t%s.%s( %s ) )", [object, method_name , bindings] )
-		
+
 		# Run our task
 		if ntimes:
 			product = await callable.callv( bindings )
 			completed.emit( product )
 			ntimes -= 1
-		
+
 		if ntimes:
 			scene_tree.create_timer(seconds).timeout.connect( run )
 		elif status == Status.CANCELLED:
@@ -222,13 +222,13 @@ class Repeater extends GDTask:
 		else:
 			status = Status.COMPLETED;
 			finished.emit( status )
-		
+
 		# if there is a next task, run it
 		if status != Status.CANCELLED and next:
 			# pass the product of this task to the next task
 			if product && not next.bindings: next.bindings = [product]
 			next.run()
-		
+
 
 	func _init( _ntimes : int, _seconds: float, _callable : Callable, _bindings : Array = [] ):
 		super._init( _callable, _bindings )
@@ -254,14 +254,14 @@ class Timeout extends GDTask:
 	var scene_tree : SceneTree
 	var seconds : float
 	var timeout : SceneTreeTimer
-	
+
 	func _on_started():
 		timeout = scene_tree.create_timer( seconds )
 		timeout.timeout.connect( cancel )
-	
+
 	func _on_finished( _status : Status ):
 		timeout.timeout.disconnect( cancel )
-	
+
 	func _init( _seconds : float, _callable : Callable, _bindings : Array = [] ):
 		super._init( _callable, _bindings )
 		seconds = _seconds
