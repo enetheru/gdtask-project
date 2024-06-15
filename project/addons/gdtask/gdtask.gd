@@ -34,12 +34,12 @@ var next : GDTask
 var previous : GDTask
 #endregion
 
-func _notification(what: int) -> void:
-	match what:
-		NOTIFICATION_POSTINITIALIZE:
-			print("gdtask(%s) - post-initialise" %id )
-		NOTIFICATION_PREDELETE:
-			print("gdtask(%s) - pre-delete" %id )
+# DEBUG Print
+#func _notification(what: int) -> void:
+	#match what:
+		#NOTIFICATION_PREDELETE:
+			#print("gdtask(%s) - pre-delete" % id )
+
 
 #region Basic Methods
 ## by default the constructor does not action the callable, it simply creates the object.
@@ -52,16 +52,10 @@ func _init( _callable: Callable, _bindings : Array = [] ):
 	bindings = _bindings
 	
 	#DEBUG PRINT
-	if callable.is_custom():
-		print("gdtask(%s) initialised | %s( %s ) " % [id,"<anonymous lambda>",bindings] )
-	else:
-		print("gdtask(%s) initialised | %s( %s ) " % [id,callable.get_method(),bindings] )
-
-
-## Reset clears the product and sets the status to pending, as if it was just created.
-func reset():
-	status = Status.PENDING
-	product = null
+	#if callable.is_custom():
+		#print("gdtask(%s) initialised | %s( %s ) " % [id,"<anonymous lambda>",bindings] )
+	#else:
+		#print("gdtask(%s) initialised | %s( %s ) " % [id,callable.get_method(),bindings] )
 
 
 ## Run the task, pending the completion of previous tasks
@@ -130,7 +124,7 @@ func result():
 		Status.CANCELLED: return null
 		Status.COMPLETED: pass
 	return product
-	
+
 
 ## then attaches a new gdtask to perform after this one completes and returns the new task.
 func then( _callable : Callable, _bindings : Array = [] ) -> GDTask:
@@ -138,6 +132,14 @@ func then( _callable : Callable, _bindings : Array = [] ) -> GDTask:
 	next = task
 	task.previous = self
 	return next
+
+
+## Reset clears the product and sets the status to pending, as if it was just created.
+func reset( _prev : bool = false, _next : bool = false):
+	status = Status.PENDING
+	product = null
+	if _prev: previous.reset()
+	if _next: next.reset()
 
 #endregion
 

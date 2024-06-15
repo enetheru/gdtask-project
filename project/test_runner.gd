@@ -9,7 +9,7 @@ enum Op {
 	LESS_THAN
 }
 
-func check( description : String, val1, op, val2  ):
+func check( description : String, val1, op, val2  ) -> bool:
 	var symbol = "?"
 	var result = false
 	match op:
@@ -33,23 +33,19 @@ func check( description : String, val1, op, val2  ):
 			result = val1 < val2
 		
 	var test = "%s - is: %s %s %s" % [description, val1, symbol, val2]
+	print_rich( test, " - [b][color=%s]%s[/color][/b]" % ["green" if result else "red", "OK" if result else "FAIL"] )
+	return result
 
-	if result:
-		print_rich( test, " - [b][color=green]OK[/color][/b]" )
-	else:
-		print_rich( test, " - [b][color=red]FAIL[/color][/b]" )
-
-func check_status( test : String, have : GDTask.Status, want : GDTask.Status ):
+func check_status( description : String, have : GDTask.Status, want : GDTask.Status ) -> bool:
 	GDTask.Status.keys()
-	var txt = "%s - have: %s, want: %s" % [test, GDTask.Status.keys()[have], GDTask.Status.keys()[want]]
-	if have == want:
-		print_rich( txt, " - [b][color=green]OK[/color][/b]" )
-	else:
-		printerr(txt)
+	var txt = "%s - have: %s, want: %s" % [description, GDTask.Status.keys()[have], GDTask.Status.keys()[want]]
+	var result = have == want
+	print_rich( txt, " - [b][color=%s]%s[/color][/b]" % ["green" if result else "red", "OK" if result else "FAIL"] )
+	return result
 
 func _ready():
 	## Collect all the tests from the test directory
-	var tests : Array = []
+	var test_scripts : Array = []
 	var path = "tests"
 	var dir: DirAccess = DirAccess.open(path)
 	if dir:
@@ -57,15 +53,19 @@ func _ready():
 		var file_name: String = dir.get_next()
 		while file_name != "":
 			if not dir.current_is_dir() && file_name.ends_with(".gd") :
-				tests.append( load("res://%s/%s" % [path, file_name]).new(self) )
+				test_scripts.append( file_name )
 			file_name = dir.get_next()
 	else:
 		printerr("encountered an error accessing path: %s" % path )
 	
-	for test in tests:
+	var results : Dictionary
+	for script : String in test_scripts:
 		print("\n")
-		var result = await test.run()
+		var test_object = load("res://%s/%s" % [path, script]).new(self)
+		results[script.get_basename()] = await test_object.run()
 	
+	for test in results.keys():
+		print_rich( "Script: %s.gd" % test, " - [color=%s][b]%s[/b][/color]" % ["red" if results[test] else "green", "FAIL" if results[test] else "OK"] )
 
 	#get_tree().root.propagate_notification( NOTIFICATION_WM_CLOSE_REQUEST )
 	#get_tree().quit()
