@@ -1,6 +1,8 @@
-extends RefCounted
+extends Object
 
 var runner : RichTextLabel
+
+#TODO use a lambda
 
 var last_value : float
 
@@ -13,8 +15,6 @@ func generic( duration : float = 0, value : float = 0 ) -> float:
 func _init( test_runner : RichTextLabel ) -> void:
 	print("base-tests init function")
 	runner = test_runner
-	
-	await run()
 
 func run() -> int:
 	print( "running Base GDTask Tests")
@@ -24,7 +24,7 @@ func run() -> int:
 	
 	# running a task is a non blocking operation
 	long_task.run()
-	runner.check( "task.run() is non blocking", last_value, 999 )
+	runner.check( "task.run() is non blocking", last_value, runner.Op.EQUAL, 999 )
 	
 	# runnin an inprogress task is also non blocking, but has little effect.
 	# the function is made, and awaits the finished result, but returns instantly.
@@ -32,16 +32,16 @@ func run() -> int:
 	
 	# calling await on an in-progress task will await the result
 	await long_task.run()
-	runner.check("await task.run() on task in progress", last_value, 2 )
+	runner.check("await task.run() on task in progress", last_value, runner.Op.EQUAL, 2 )
 	
 	# awaiting the result of a completed task will return the product
-	runner.check( "await task.result() on completed task is OK", await long_task.result(), 3 )
+	runner.check( "await task.result() on completed task is OK", await long_task.result(), runner.Op.EQUAL, 3 )
 	
 	# reset product and status, ie return to baseline
 	long_task.reset()
 	
 	# awaiting the result of a fresh task will run it
-	runner.check( "await task.result() runs task to get result", await long_task.result(), 3 )
+	runner.check( "await task.result() runs task to get result", await long_task.result(), runner.Op.EQUAL, 3 )
 	
 	long_task.reset()
 	long_task.run()

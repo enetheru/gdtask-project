@@ -28,7 +28,7 @@ var product
 
 static var next_id: int = 0
 var id : int
-var status : Status = Status.PENDING
+var status : Status
 
 var next : GDTask
 var previous : GDTask
@@ -44,8 +44,10 @@ func _notification(what: int) -> void:
 #region Basic Methods
 ## by default the constructor does not action the callable, it simply creates the object.
 func _init( _callable: Callable, _bindings : Array = [] ):
-	id = next_id
 	next_id += 1
+	
+	id = next_id
+	status = Status.PENDING
 	callable = _callable
 	bindings = _bindings
 	
@@ -109,8 +111,9 @@ func run() -> void:
 
 
 ## Cancel the task, and propogate forward and backwards through the chain
-# This cannot stop an existing function call from taking place.
+# This cannot stop an in-progress callable.call()
 # But it can prevent further run calls to next and previous tasks
+# I am going to leave the ability to cancel a completed job for now.
 func cancel():
 	status = Status.CANCELLED
 	finished.emit( status )

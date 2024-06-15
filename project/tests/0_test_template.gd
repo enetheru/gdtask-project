@@ -3,12 +3,10 @@ extends Object
 var runner : RichTextLabel
 
 func _init( test_runner : RichTextLabel ) -> void:
-	print("watcher-tests init function")
+	#print("template init function")
 	runner = test_runner
 
 func run() -> int:
-	print( "running WaitUntil Tests")
-	
-	## GDTask.WaitUntil()
+	print( "running template Tests")
 	
 	return OK
