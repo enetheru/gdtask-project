@@ -185,6 +185,16 @@ func reset( _prev : bool = false, _next : bool = false):
 
 #region Specialisations
 
+#       ███████ ██████  ███████  ██████ ██  █████  ██      ██ ███████  █████  ████████ ██  ██████  ███    ██ ███████
+#       ██      ██   ██ ██      ██      ██ ██   ██ ██      ██ ██      ██   ██    ██    ██ ██    ██ ████   ██ ██
+#       ███████ ██████  █████   ██      ██ ███████ ██      ██ ███████ ███████    ██    ██ ██    ██ ██ ██  ██ ███████
+#            ██ ██      ██      ██      ██ ██   ██ ██      ██      ██ ██   ██    ██    ██ ██    ██ ██  ██ ██      ██
+#       ███████ ██      ███████  ██████ ██ ██   ██ ███████ ██ ███████ ██   ██    ██    ██  ██████  ██   ████ ███████
+
+## Below are the specialisations of GDTask which extend the functionality to perform more elaborate tasks.
+# Ones that require overloading the primary functions and perhaps adding more.
+# There is one paradigm I am targeting, resettability
+
 #       ██     ██  █████  ████████  ██████ ██   ██ ███████ ██████
 #       ██     ██ ██   ██    ██    ██      ██   ██ ██      ██   ██
 #       ██  █  ██ ███████    ██    ██      ███████ █████   ██████
@@ -192,23 +202,60 @@ func reset( _prev : bool = false, _next : bool = false):
 #        ███ ███  ██   ██    ██     ██████ ██   ██ ███████ ██   ██
 
 class Watcher extends GDTask:
+	signal success
 	var scene_tree : SceneTree
+
+	func _init( _callable: Callable, _bindings : Array = [] ):
+		super._init( _callable, _bindings )
+		scene_tree = Engine.get_main_loop() as SceneTree
+		if not scene_tree: printerr("Unable to get the SceneTree from Engine")
+		started.connect( _on_started )
 
 	func watcher():
 		if callable.callv( bindings ):
-			status = Status.COMPLETED
-			finished.emit( status )
 			scene_tree.process_frame.disconnect( watcher )
-			if next: next.run()
+			success.emit()
 
 	func _on_started():
 		if scene_tree: scene_tree.process_frame.connect( watcher )
 		else: cancel()
 
-	func _init( _callable: Callable, _bindings : Array ):
-		super._init( _callable, _bindings )
-		scene_tree = Engine.get_main_loop() as SceneTree
-		if not scene_tree: printerr("Unable to get the SceneTree from Engine")
+	## Run the task, pending the completion of previous tasks
+	# Where this differs to the base class is that the run() function will
+	# await the result of our predicate returning true before emitting finished, and triggering next.
+	func run() -> void:
+		match status:
+			Status.PENDING:
+				status = Status.INPROGRESS
+				started.emit()
+			Status.INPROGRESS:
+				await finished
+				return
+			_:
+				finished.emit( status )
+				return
+
+		if previous && previous.status == Status.PENDING:
+			await previous.run()
+			if previous.status == Status.CANCELLED:
+				status = Status.CANCELLED
+				finished.emit( status )
+
+		# Run our task
+		await success
+
+		if status != Status.CANCELLED: status = Status.COMPLETED
+
+		finished.emit( status )
+		completed.emit( product )
+		if status == Status.CANCELLED: return
+
+		# if there is a next task, run it
+		if next:
+			# TODO it might be better to attach the product at the end of the bindings.
+			# pass the product of this task to the next task
+			if product && not next.bindings: next.bindings = [product]
+			next.run()
 
 #       ███    ██ ███████ ██   ██ ████████ ███████ ██████   █████  ███    ███ ███████
 #       ████   ██ ██       ██ ██     ██    ██      ██   ██ ██   ██ ████  ████ ██
@@ -220,12 +267,6 @@ class NextFrame extends GDTask:
 	var scene_tree : SceneTree
 	var start_frame : int
 
-	func cleanup( _status ):
-		scene_tree.process_frame.disconnect( run )
-
-	func run():
-		if scene_tree.get_frame() >= start_frame+1: super.run()
-
 	func _init( _callable : Callable, _bindings : Array = [] ):
 		super._init( _callable, _bindings )
 		scene_tree = Engine.get_main_loop() as SceneTree
@@ -233,6 +274,12 @@ class NextFrame extends GDTask:
 		start_frame = scene_tree.get_frame()
 		scene_tree.process_frame.connect( run )
 		finished.connect( cleanup )
+
+	func cleanup( _status ):
+		scene_tree.process_frame.disconnect( run )
+
+	func run():
+		if scene_tree.get_frame() >= start_frame+1: super.run()
 
 #       ██████  ███████ ██████  ███████  █████  ████████ ███████ ██████
 #       ██   ██ ██      ██   ██ ██      ██   ██    ██    ██      ██   ██
@@ -322,13 +369,6 @@ class Timeout extends GDTask:
 	var seconds : float
 	var timeout : SceneTreeTimer
 
-	func _on_started():
-		timeout = scene_tree.create_timer( seconds )
-		timeout.timeout.connect( cancel )
-
-	func _on_finished( _status : Status ):
-		timeout.timeout.disconnect( cancel )
-
 	func _init( _seconds : float, _callable : Callable, _bindings : Array = [] ):
 		super._init( _callable, _bindings )
 		seconds = _seconds
@@ -336,6 +376,13 @@ class Timeout extends GDTask:
 		if not scene_tree: printerr("Unable to get the SceneTree from Engine"); return
 		started.connect( _on_started )
 		finished.connect( _on_finished )
+
+	func _on_started():
+		timeout = scene_tree.create_timer( seconds )
+		timeout.timeout.connect( cancel )
+
+	func _on_finished( _status : Status ):
+		timeout.timeout.disconnect( cancel )
 #endregion
 
 #region Factory functions for specialisations
@@ -346,6 +393,8 @@ class Timeout extends GDTask:
 #       ██      ██   ██ ██         ██    ██    ██ ██   ██ ██ ██           ██
 #       ██      ██   ██  ██████    ██     ██████  ██   ██ ██ ███████ ███████
 
+# The thing factories all have in common are that they do not await.
+# So to run synchronously, either awaiting a second run() or awaiting the finish signal is necessary.
 ## WaitUntil
 # waits till the result of the callable evaluates to true before completing
 static func WaitUntil( _callable : Callable, _bindings : Array = [] ) -> GDTask:
