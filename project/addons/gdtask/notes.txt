@@ -1,6 +1,0 @@
-Inspired by UniTask
-
-
-TODO:
-I want to turn this into a node which manages the instances, that way I can have an inspector which shows tasks and controls to change them.
-

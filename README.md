@@ -31,9 +31,6 @@ Its probably trash level code, but so long as it works for me thats ok.
     - repetition
     - repetition
     - Timeout
-    - WhenAll( [] )  - TODO
-    - WhenAny( [] )  - TODO
-    - RPC - TODO
 * Tests
 
 ## Specialisations
@@ -62,3 +59,13 @@ CancelOn( signal )
 
 
 ascii titles generated using: http://www.patorjk.com/software/taag
+
+## Wishlist
+
+WhenAll( [] )
+
+WhenAny( [] )
+
+RPC
+
+editor manager node with panel
