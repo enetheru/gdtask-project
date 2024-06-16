@@ -257,30 +257,6 @@ class Watcher extends GDTask:
 			if product && not next.bindings: next.bindings = [product]
 			next.run()
 
-#       ███    ██ ███████ ██   ██ ████████ ███████ ██████   █████  ███    ███ ███████
-#       ████   ██ ██       ██ ██     ██    ██      ██   ██ ██   ██ ████  ████ ██
-#       ██ ██  ██ █████     ███      ██    █████   ██████  ███████ ██ ████ ██ █████
-#       ██  ██ ██ ██       ██ ██     ██    ██      ██   ██ ██   ██ ██  ██  ██ ██
-#       ██   ████ ███████ ██   ██    ██    ██      ██   ██ ██   ██ ██      ██ ███████
-
-class NextFrame extends GDTask:
-	var scene_tree : SceneTree
-	var start_frame : int
-
-	func _init( _callable : Callable, _bindings : Array = [] ):
-		super._init( _callable, _bindings )
-		scene_tree = Engine.get_main_loop() as SceneTree
-		if not scene_tree: printerr("Unable to get the SceneTree from Engine"); return
-		start_frame = scene_tree.get_frame()
-		scene_tree.process_frame.connect( run )
-		finished.connect( cleanup )
-
-	func cleanup( _status ):
-		scene_tree.process_frame.disconnect( run )
-
-	func run():
-		if scene_tree.get_frame() >= start_frame+1: super.run()
-
 #       ██████  ███████ ██████  ███████  █████  ████████ ███████ ██████
 #       ██   ██ ██      ██   ██ ██      ██   ██    ██    ██      ██   ██
 #       ██████  █████   ██████  █████   ███████    ██    █████   ██████
@@ -399,12 +375,6 @@ class Timeout extends GDTask:
 # waits till the result of the callable evaluates to true before completing
 static func WaitUntil( _callable : Callable, _bindings : Array = [] ) -> GDTask:
 	var task = Watcher.new( _callable, _bindings )
-	task.run()
-	return task
-
-## WaitFrame
-static func WaitFrame( _callable : Callable, _bindings = [] ) -> GDTask:
-	var task = NextFrame.new( _callable, _bindings )
 	task.run()
 	return task
 
