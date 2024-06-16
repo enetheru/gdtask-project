@@ -18,9 +18,12 @@ func run() -> int:
 	print("Create a standard task")
 	var task = GDTask.new( test_func, [2] )
 	runner.check_status("Status After creation", task.status, GDTask.Status.PENDING )
-	runner.get_tree().physics_frame
+	#runner.get_tree().physics_frame
+	var signal_as_variable : Signal = Signal()
+	#test_func2( signal_as_variable )
+	signal_as_variable.connect( Callable( self, "test_func3") )
+	signal_as_variable.emit()
 
-	await task.run()
 
 	## GDTask.WaitUntil()
 	return OK

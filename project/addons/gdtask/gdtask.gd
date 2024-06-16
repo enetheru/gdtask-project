@@ -1,7 +1,15 @@
 class_name GDTask extends RefCounted
+# ██
+# ██     ██████  ██████  ████████  █████  ███████ ██   ██
+# ██    ██       ██   ██    ██    ██   ██ ██      ██  ██
+# ██    ██   ███ ██   ██    ██    ███████ ███████ █████
+# ██    ██    ██ ██   ██    ██    ██   ██      ██ ██  ██
+# ██     ██████  ██████     ██    ██   ██ ███████ ██   ██
+# ██
+# █████████████████████████████████████████████████████████████████████████████
 
 # Task object inspired by UniTask
-# Needs better documentation.
+# ascii titles generated using: http://www.patorjk.com/software/taag
 
 # TODO WhenAll( [] )
 # TODO WhenAny( [] )
@@ -34,14 +42,20 @@ var next : GDTask
 var previous : GDTask
 #endregion
 
+#region Basic Methods
+
 # DEBUG Print
 #func _notification(what: int) -> void:
 	#match what:
 		#NOTIFICATION_PREDELETE:
 			#print("gdtask(%s) - pre-delete" % id )
 
+#               ██ ███    ██ ██ ████████
+#               ██ ████   ██ ██    ██
+#               ██ ██ ██  ██ ██    ██
+#               ██ ██  ██ ██ ██    ██
+#       ███████ ██ ██   ████ ██    ██
 
-#region Basic Methods
 ## by default the constructor does not action the callable, it simply creates the object.
 func _init( _callable: Callable, _bindings : Array = [] ):
 	next_id += 1
@@ -57,6 +71,11 @@ func _init( _callable: Callable, _bindings : Array = [] ):
 	#else:
 		#print("gdtask(%s) initialised | %s( %s ) " % [id,callable.get_method(),bindings] )
 
+#       ██████  ██    ██ ███    ██
+#       ██   ██ ██    ██ ████   ██
+#       ██████  ██    ██ ██ ██  ██
+#       ██   ██ ██    ██ ██  ██ ██
+#       ██   ██  ██████  ██   ████
 
 ## Run the task, pending the completion of previous tasks
 # run() is asynchronous
@@ -103,6 +122,11 @@ func run() -> void:
 		if product && not next.bindings: next.bindings = [product]
 		next.run()
 
+#        ██████  █████  ███    ██  ██████ ███████ ██
+#       ██      ██   ██ ████   ██ ██      ██      ██
+#       ██      ███████ ██ ██  ██ ██      █████   ██
+#       ██      ██   ██ ██  ██ ██ ██      ██      ██
+#        ██████ ██   ██ ██   ████  ██████ ███████ ███████
 
 ## Cancel the task, and propogate forward and backwards through the chain
 # This cannot stop an in-progress callable.call()
@@ -115,6 +139,11 @@ func cancel():
 	if previous && previous.status == Status.PENDING: previous.cancel()
 	if next && not next.status == Status.PENDING: next.cancel()
 
+#       ██████  ███████ ███████ ██    ██ ██      ████████
+#       ██   ██ ██      ██      ██    ██ ██         ██
+#       ██████  █████   ███████ ██    ██ ██         ██
+#       ██   ██ ██           ██ ██    ██ ██         ██
+#       ██   ██ ███████ ███████  ██████  ███████    ██
 
 ## Await and retrieve the result
 func result():
@@ -125,6 +154,11 @@ func result():
 		Status.COMPLETED: pass
 	return product
 
+#       ████████ ██   ██ ███████ ███    ██
+#          ██    ██   ██ ██      ████   ██
+#          ██    ███████ █████   ██ ██  ██
+#          ██    ██   ██ ██      ██  ██ ██
+#          ██    ██   ██ ███████ ██   ████
 
 ## then attaches a new gdtask to perform after this one completes and returns the new task.
 func then( _callable : Callable, _bindings : Array = [] ) -> GDTask:
@@ -133,6 +167,11 @@ func then( _callable : Callable, _bindings : Array = [] ) -> GDTask:
 	task.previous = self
 	return next
 
+#       ██████  ███████ ███████ ███████ ████████
+#       ██   ██ ██      ██      ██         ██
+#       ██████  █████   ███████ █████      ██
+#       ██   ██ ██           ██ ██         ██
+#       ██   ██ ███████ ███████ ███████    ██
 
 ## Reset clears the product and sets the status to pending, as if it was just created.
 func reset( _prev : bool = false, _next : bool = false):
@@ -145,6 +184,13 @@ func reset( _prev : bool = false, _next : bool = false):
 
 
 #region Specialisations
+
+#       ██     ██  █████  ████████  ██████ ██   ██ ███████ ██████
+#       ██     ██ ██   ██    ██    ██      ██   ██ ██      ██   ██
+#       ██  █  ██ ███████    ██    ██      ███████ █████   ██████
+#       ██ ███ ██ ██   ██    ██    ██      ██   ██ ██      ██   ██
+#        ███ ███  ██   ██    ██     ██████ ██   ██ ███████ ██   ██
+
 class Watcher extends GDTask:
 	var scene_tree : SceneTree
 
@@ -164,6 +210,11 @@ class Watcher extends GDTask:
 		scene_tree = Engine.get_main_loop() as SceneTree
 		if not scene_tree: printerr("Unable to get the SceneTree from Engine")
 
+#       ███    ██ ███████ ██   ██ ████████ ███████ ██████   █████  ███    ███ ███████
+#       ████   ██ ██       ██ ██     ██    ██      ██   ██ ██   ██ ████  ████ ██
+#       ██ ██  ██ █████     ███      ██    █████   ██████  ███████ ██ ████ ██ █████
+#       ██  ██ ██ ██       ██ ██     ██    ██      ██   ██ ██   ██ ██  ██  ██ ██
+#       ██   ████ ███████ ██   ██    ██    ██      ██   ██ ██   ██ ██      ██ ███████
 
 class NextFrame extends GDTask:
 	var scene_tree : SceneTree
@@ -183,10 +234,23 @@ class NextFrame extends GDTask:
 		scene_tree.process_frame.connect( run )
 		finished.connect( cleanup )
 
+#       ██████  ███████ ██████  ███████  █████  ████████ ███████ ██████
+#       ██   ██ ██      ██   ██ ██      ██   ██    ██    ██      ██   ██
+#       ██████  █████   ██████  █████   ███████    ██    █████   ██████
+#       ██   ██ ██      ██      ██      ██   ██    ██    ██      ██   ██
+#       ██   ██ ███████ ██      ███████ ██   ██    ██    ███████ ██   ██
+
 class Repeater extends GDTask:
 	var scene_tree : SceneTree
 	var seconds : float
 	var ntimes : int = -1
+
+	func _init( _ntimes : int, _seconds: float, _callable : Callable, _bindings : Array = [] ):
+		super._init( _callable, _bindings )
+		seconds = _seconds
+		ntimes = _ntimes
+		scene_tree = Engine.get_main_loop() as SceneTree
+		if not scene_tree: printerr("Unable to get the SceneTree from Engine"); return
 
 	func run() -> void:
 		match status:
@@ -229,14 +293,11 @@ class Repeater extends GDTask:
 			if product && not next.bindings: next.bindings = [product]
 			next.run()
 
-
-	func _init( _ntimes : int, _seconds: float, _callable : Callable, _bindings : Array = [] ):
-		super._init( _callable, _bindings )
-		seconds = _seconds
-		ntimes = _ntimes
-		scene_tree = Engine.get_main_loop() as SceneTree
-		if not scene_tree: printerr("Unable to get the SceneTree from Engine"); return
-
+#       ██████  ███████ ██       █████  ██    ██
+#       ██   ██ ██      ██      ██   ██  ██  ██
+#       ██   ██ █████   ██      ███████   ████
+#       ██   ██ ██      ██      ██   ██    ██
+#       ██████  ███████ ███████ ██   ██    ██
 
 class Delay extends GDTask:
 	var scene_tree : SceneTree
@@ -247,7 +308,13 @@ class Delay extends GDTask:
 		seconds = _seconds
 		scene_tree = Engine.get_main_loop() as SceneTree
 		if not scene_tree: printerr("Unable to get the SceneTree from Engine"); return
-		scene_tree.create_timer(seconds).timeout.connect( run )
+		scene_tree.create_timer(seconds).timeout.connect( run, CONNECT_ONE_SHOT )
+
+#       ████████ ██ ███    ███ ███████  ██████  ██    ██ ████████
+#          ██    ██ ████  ████ ██      ██    ██ ██    ██    ██
+#          ██    ██ ██ ████ ██ █████   ██    ██ ██    ██    ██
+#          ██    ██ ██  ██  ██ ██      ██    ██ ██    ██    ██
+#          ██    ██ ██      ██ ███████  ██████   ██████     ██
 
 #TODO Timeout is in progress
 class Timeout extends GDTask:
@@ -272,6 +339,12 @@ class Timeout extends GDTask:
 #endregion
 
 #region Factory functions for specialisations
+
+#       ███████  █████   ██████ ████████  ██████  ██████  ██ ███████ ███████
+#       ██      ██   ██ ██         ██    ██    ██ ██   ██ ██ ██      ██
+#       █████   ███████ ██         ██    ██    ██ ██████  ██ █████   ███████
+#       ██      ██   ██ ██         ██    ██    ██ ██   ██ ██ ██           ██
+#       ██      ██   ██  ██████    ██     ██████  ██   ██ ██ ███████ ███████
 
 ## WaitUntil
 # waits till the result of the callable evaluates to true before completing
