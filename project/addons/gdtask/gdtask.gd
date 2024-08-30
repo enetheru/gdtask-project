@@ -359,6 +359,20 @@ class Timeout extends GDTask:
 
 	func _on_finished( _status : Status ):
 		timeout.timeout.disconnect( cancel )
+
+
+class SigResponse extends GDTask:
+	var sig : Signal
+
+	func run():
+		await sig
+		super.run()
+
+	func _init( _sig : Signal, _callable : Callable, _bindings : Array = [] ):
+		super._init( _callable, _bindings )
+		sig = _sig
+
+
 #endregion
 
 #region Factory functions for specialisations
@@ -392,6 +406,11 @@ static func DelayFor( seconds : float, _callable : Callable = func(): return, _b
 
 static func CancelAfter( seconds : float, _callable : Callable = func(): return, _bindings : Array = [] ):
 	var task = Timeout.new( seconds, _callable, _bindings )
+	task.run()
+	return task
+
+static func WaitForSignal( sig : Signal, _callable : Callable = func(): return, _bindings : Array = [] ):
+	var task = SigResponse.new( sig, _callable, _bindings )
 	task.run()
 	return task
 
