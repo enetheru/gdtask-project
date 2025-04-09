@@ -13,7 +13,6 @@ func test_func( duration: float ):
 func run() -> int:
 	print( "running WaitUntil Tests")
 
-	var value = 0
 	# Create a basic GDTask
 	print("Create a standard task")
 	var task = GDTask.new( test_func, [2] )

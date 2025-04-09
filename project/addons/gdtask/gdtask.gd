@@ -7,49 +7,99 @@ class_name GDTask extends RefCounted
 # ██     ██████  ██████     ██    ██   ██ ███████ ██   ██
 # ██
 # █████████████████████████████████████████████████████████████████████████████
-
+#
 # Task object inspired by UniTask
-# ascii titles generated using: http://www.patorjk.com/software/taag
 
-# TODO WhenAll( [] )
-# TODO WhenAny( [] )
+## the counter from which to draw the next id from.
+static var next_id: int = 0 :
+	get:
+		next_id += 1
+		return next_id
 
-#region Local definitions
+
+# MARK: Defs
+#   ██████  ███████ ███████ ███████
+#   ██   ██ ██      ██      ██
+#   ██   ██ █████   █████   ███████
+#   ██   ██ ██      ██           ██
+#   ██████  ███████ ██      ███████
+
+## Status flag for the task
 enum Status {
 	PENDING,	# The default state, waiting to be run
 	INPROGRESS,	# Currently running
 	COMPLETED,	# finished running
 	CANCELLED	# finished running by cancellation
 }
-#endregion
 
-#region Signals
+
+# MARK: Signals
+#   ███████ ██  ██████  ███    ██  █████  ██      ███████
+#   ██      ██ ██       ████   ██ ██   ██ ██      ██
+#   ███████ ██ ██   ███ ██ ██  ██ ███████ ██      ███████
+#        ██ ██ ██    ██ ██  ██ ██ ██   ██ ██           ██
+#   ███████ ██  ██████  ██   ████ ██   ██ ███████ ███████
+
 signal started
 signal completed( product )
 signal finished( status : Status )
-#endregion
 
-#region Properties
-var callable : Callable
-var bindings : Array = []
-var product
 
-static var next_id: int = 0
+# MARK: Props
+#   ██████  ██████   ██████  ██████  ███████
+#   ██   ██ ██   ██ ██    ██ ██   ██ ██
+#   ██████  ██████  ██    ██ ██████  ███████
+#   ██      ██   ██ ██    ██ ██           ██
+#   ██      ██   ██  ██████  ██      ███████
+
+## A unique ID to use
 var id : int
+
+## The Status of the task
 var status : Status
 
+## The function that is the task we are running.
+var callable : Callable
+
+## The values to bind to the callable when running
+var bindings : Array = []
+
+## The result of our task
+var product
+
+## The task to run after we have successfully completed
 var next : GDTask
+
+## The task previous to us that must be successful for us to run.
 var previous : GDTask
-#endregion
 
-#region Basic Methods
 
-# DEBUG Print
-#func _notification(what: int) -> void:
-	#match what:
-		#NOTIFICATION_PREDELETE:
-			#print("gdtask(%s) - pre-delete" % id )
+# MARK: _to_string()
+#       ████████  ██████          ███████ ████████ ██████  ██ ███    ██  ██████
+#          ██    ██    ██         ██         ██    ██   ██ ██ ████   ██ ██
+#          ██    ██    ██         ███████    ██    ██████  ██ ██ ██  ██ ██   ███
+#          ██    ██    ██              ██    ██    ██   ██ ██ ██  ██ ██ ██    ██
+#  ███████ ██     ██████  ███████ ███████    ██    ██   ██ ██ ██   ████  ██████
 
+## A String representation of the task
+## "[id]status | callable signature(bindings, ...) -> result"
+func _to_string() -> String:
+	# Owner
+	var object = callable.get_object()
+	var owner : String = ("%s." % object.name) if object is Node else ""
+
+	# Method Name
+	var method_name : String = "%s" % callable.get_method() if callable.is_standard() else "lambda"
+	var args : Array[String] = []
+	for arg in bindings:
+		args.append( "%s" % arg )
+
+	var function : String = "%s%s(%s)" % [owner, method_name, ", ".join(args)]
+
+	return "[%d]%s | %s -> %s" %[id, Status.keys()[status], function, product]
+
+
+# MARK: _init()
 #               ██ ███    ██ ██ ████████
 #               ██ ████   ██ ██    ██
 #               ██ ██ ██  ██ ██    ██
@@ -58,30 +108,30 @@ var previous : GDTask
 
 ## by default the constructor does not action the callable, it simply creates the object.
 func _init( _callable: Callable, _bindings : Array = [] ):
-	next_id += 1
-
 	id = next_id
 	status = Status.PENDING
 	callable = _callable
 	bindings = _bindings
 
-	#DEBUG PRINT
-	#if callable.is_custom():
-		#print("gdtask(%s) initialised | %s( %s ) " % [id,"<anonymous lambda>",bindings] )
-	#else:
-		#print("gdtask(%s) initialised | %s( %s ) " % [id,callable.get_method(),bindings] )
 
+# MARK: run()
 #       ██████  ██    ██ ███    ██
 #       ██   ██ ██    ██ ████   ██
 #       ██████  ██    ██ ██ ██  ██
 #       ██   ██ ██    ██ ██  ██ ██
 #       ██   ██  ██████  ██   ████
 
+## This is the actual runner that can be overloaded per specialisation
+func _run():
+	product = await callable.callv( bindings )
+
+
 ## Run the task, pending the completion of previous tasks
 # run() is asynchronous
 # await run() is synchronous
 # repeated run() calls will just trigger a finished signal emission, or await the finished signal
 func run() -> void:
+	# update our status
 	match status:
 		Status.PENDING:
 			status = Status.INPROGRESS
@@ -93,35 +143,35 @@ func run() -> void:
 			finished.emit( status )
 			return
 
+	# Run the previous task if we have one.
 	if previous && previous.status == Status.PENDING:
 		await previous.run()
 		if previous.status == Status.CANCELLED:
 			status = Status.CANCELLED
 			finished.emit( status )
 
-	#DEBUG PRINT
-	#var object = callable.get_object()
-	#if object is Node: object = object.name
-	#var method_name = "%s" % callable.get_method() if callable.is_standard() else "lambda"
-	#var _indent = Util.printy( "run()", [], self )
-	#Util.printy( "\t%s.%s( %s ) )", [object, method_name , bindings] )
+	# Run our actual task
+	await _run()
 
-	# Run our task
-	product = await callable.callv( bindings )
-
+	# post run checks
 	if status != Status.CANCELLED: status = Status.COMPLETED
 
+	# Notify
 	finished.emit( status )
 	completed.emit( product )
+
+	# Quit if cancelled
 	if status == Status.CANCELLED: return
 
-	# if there is a next task, run it
+	# Run the next task if it exists
 	if next:
 		# TODO it might be better to attach the product at the end of the bindings.
 		# pass the product of this task to the next task
 		if product && not next.bindings: next.bindings = [product]
 		next.run()
 
+
+# MARK: cancel()
 #        ██████  █████  ███    ██  ██████ ███████ ██
 #       ██      ██   ██ ████   ██ ██      ██      ██
 #       ██      ███████ ██ ██  ██ ██      █████   ██
@@ -139,6 +189,8 @@ func cancel():
 	if previous && previous.status == Status.PENDING: previous.cancel()
 	if next && not next.status == Status.PENDING: next.cancel()
 
+
+# MARK: result()
 #       ██████  ███████ ███████ ██    ██ ██      ████████
 #       ██   ██ ██      ██      ██    ██ ██         ██
 #       ██████  █████   ███████ ██    ██ ██         ██
@@ -154,6 +206,8 @@ func result():
 		Status.COMPLETED: pass
 	return product
 
+
+# MARK: then()
 #       ████████ ██   ██ ███████ ███    ██
 #          ██    ██   ██ ██      ████   ██
 #          ██    ███████ █████   ██ ██  ██
@@ -167,6 +221,8 @@ func then( _callable : Callable, _bindings : Array = [] ) -> GDTask:
 	task.previous = self
 	return next
 
+
+# MARK: reset()
 #       ██████  ███████ ███████ ███████ ████████
 #       ██   ██ ██      ██      ██         ██
 #       ██████  █████   ███████ █████      ██
@@ -180,11 +236,8 @@ func reset( _prev : bool = false, _next : bool = false):
 	if _prev: previous.reset()
 	if _next: next.reset()
 
-#endregion
 
-
-#region Specialisations
-
+# MARK: Specialisations
 #       ███████ ██████  ███████  ██████ ██  █████  ██      ██ ███████  █████  ████████ ██  ██████  ███    ██ ███████
 #       ██      ██   ██ ██      ██      ██ ██   ██ ██      ██ ██      ██   ██    ██    ██ ██    ██ ████   ██ ██
 #       ███████ ██████  █████   ██      ██ ███████ ██      ██ ███████ ███████    ██    ██ ██    ██ ██ ██  ██ ███████
@@ -195,12 +248,15 @@ func reset( _prev : bool = false, _next : bool = false):
 # Ones that require overloading the primary functions and perhaps adding more.
 # There is one paradigm I am targeting, resettability
 
+
+# MARK: Watcher
 #       ██     ██  █████  ████████  ██████ ██   ██ ███████ ██████
 #       ██     ██ ██   ██    ██    ██      ██   ██ ██      ██   ██
 #       ██  █  ██ ███████    ██    ██      ███████ █████   ██████
 #       ██ ███ ██ ██   ██    ██    ██      ██   ██ ██      ██   ██
 #        ███ ███  ██   ██    ██     ██████ ██   ██ ███████ ██   ██
 
+## This task runs every frame, and finishes when the result of the callable is true
 class Watcher extends GDTask:
 	signal success
 	var scene_tree : SceneTree
@@ -220,43 +276,11 @@ class Watcher extends GDTask:
 		if scene_tree: scene_tree.process_frame.connect( watcher )
 		else: cancel()
 
-	## Run the task, pending the completion of previous tasks
-	# Where this differs to the base class is that the run() function will
-	# await the result of our predicate returning true before emitting finished, and triggering next.
-	func run() -> void:
-		match status:
-			Status.PENDING:
-				status = Status.INPROGRESS
-				started.emit()
-			Status.INPROGRESS:
-				await finished
-				return
-			_:
-				finished.emit( status )
-				return
-
-		if previous && previous.status == Status.PENDING:
-			await previous.run()
-			if previous.status == Status.CANCELLED:
-				status = Status.CANCELLED
-				finished.emit( status )
-
-		# Run our task
+	func _run() -> void:
 		await success
 
-		if status != Status.CANCELLED: status = Status.COMPLETED
 
-		finished.emit( status )
-		completed.emit( product )
-		if status == Status.CANCELLED: return
-
-		# if there is a next task, run it
-		if next:
-			# TODO it might be better to attach the product at the end of the bindings.
-			# pass the product of this task to the next task
-			if product && not next.bindings: next.bindings = [product]
-			next.run()
-
+# MARK: Repeater
 #       ██████  ███████ ██████  ███████  █████  ████████ ███████ ██████
 #       ██   ██ ██      ██   ██ ██      ██   ██    ██    ██      ██   ██
 #       ██████  █████   ██████  █████   ███████    ██    █████   ██████
@@ -277,23 +301,16 @@ class Repeater extends GDTask:
 
 	func run() -> void:
 		match status:
-			Status.PENDING:		status = Status.INPROGRESS
+			Status.PENDING:		status = Status.INPROGRESS; started.emit()
 			Status.CANCELLED:	finished.emit( status )
 			Status.COMPLETED:	finished.emit( status )
-			Status.INPROGRESS:	pass
+			Status.INPROGRESS:	pass # TODO Reset Counter?
 
 		if previous && previous.status == Status.PENDING:
 			await previous.run()
 			if previous.status == Status.CANCELLED:
 				status = Status.CANCELLED
 				finished.emit( status )
-
-		#DEBUG PRINT
-		#var object = callable.get_object()
-		#if object is Node: object = object.name
-		#var method_name = "%s" % callable.get_method() if callable.is_standard() else "lambda"
-		#var _indent = Util.printy( "run()", [], self )
-		#Util.printy( "\t%s.%s( %s ) )", [object, method_name , bindings] )
 
 		# Run our task
 		if ntimes:
@@ -316,6 +333,8 @@ class Repeater extends GDTask:
 			if product && not next.bindings: next.bindings = [product]
 			next.run()
 
+
+# MARK: Delay
 #       ██████  ███████ ██       █████  ██    ██
 #       ██   ██ ██      ██      ██   ██  ██  ██
 #       ██   ██ █████   ██      ███████   ████
@@ -333,6 +352,8 @@ class Delay extends GDTask:
 		if not scene_tree: printerr("Unable to get the SceneTree from Engine"); return
 		scene_tree.create_timer(seconds).timeout.connect( run, CONNECT_ONE_SHOT )
 
+
+# MARK: Timeout
 #       ████████ ██ ███    ███ ███████  ██████  ██    ██ ████████
 #          ██    ██ ████  ████ ██      ██    ██ ██    ██    ██
 #          ██    ██ ██ ████ ██ █████   ██    ██ ██    ██    ██
@@ -361,6 +382,14 @@ class Timeout extends GDTask:
 		timeout.timeout.disconnect( cancel )
 
 
+# MARK: Signal
+#   ███████ ██  ██████  ███    ██  █████  ██
+#   ██      ██ ██       ████   ██ ██   ██ ██
+#   ███████ ██ ██   ███ ██ ██  ██ ███████ ██
+#        ██ ██ ██    ██ ██  ██ ██ ██   ██ ██
+#   ███████ ██  ██████  ██   ████ ██   ██ ███████
+
+## Waits for a given signal before running.
 class SigResponse extends GDTask:
 	var sig : Signal
 
@@ -373,10 +402,94 @@ class SigResponse extends GDTask:
 		sig = _sig
 
 
-#endregion
+# MARK: Any
+#    █████  ███    ██ ██    ██
+#   ██   ██ ████   ██  ██  ██
+#   ███████ ██ ██  ██   ████
+#   ██   ██ ██  ██ ██    ██
+#   ██   ██ ██   ████    ██
 
-#region Factory functions for specialisations
+class Any extends GDTask:
+	signal any
 
+	var tasks : Array[GDTask]
+
+	func _to_string() -> String:
+		return "[%d]%s | sub_tasks: %d" %[id, Status.keys()[status], tasks.size()]
+
+	func _on_task_finished( sub_status : Status ):
+		if status != Status.INPROGRESS: return # we dont care, as our task isnt running.
+		if sub_status == Status.COMPLETED:
+			any.emit()
+
+	func _init( _tasks : Array[GDTask] ):
+		id = next_id
+		status = Status.PENDING
+		tasks = _tasks
+		for task : GDTask in tasks:
+			task.finished.connect(_on_task_finished)
+			# If we happen to pass this task a completed task
+			# then we should mark it as completed too.
+			if task.status == Status.COMPLETED:
+				status == Status.COMPLETED
+
+	## Runs all the subtasks given to it.
+	func _run() -> void:
+		for task in tasks:
+			task.run()
+
+		await any
+
+
+# MARK: All
+#    █████  ██      ██
+#   ██   ██ ██      ██
+#   ███████ ██      ██
+#   ██   ██ ██      ██
+#   ██   ██ ███████ ███████
+
+class All extends GDTask:
+	signal all
+
+	var tasks : Array[GDTask]
+	var counter : int = -1
+
+	func _to_string() -> String:
+		return "[%d]%s | sub_tasks: %d" %[id, Status.keys()[status], tasks.size()]
+
+	func _on_task_finished( sub_status : Status ):
+		counter -= 1
+
+		if status != Status.INPROGRESS: return # we dont care, as our task isnt running.
+
+		if counter <= 0:
+			all.emit()
+
+		if sub_status == Status.CANCELLED:
+			status = Status.CANCELLED
+
+	func _init( _tasks : Array[GDTask] ):
+		id = next_id
+		status = Status.PENDING
+		tasks = _tasks
+		counter = tasks.size()
+		for task : GDTask in tasks:
+			# completed tasks dont count to the total
+			if task.status == Status.COMPLETED:
+				counter -= 1
+				continue
+			# Oneshot is used so a task cant be counted twice.
+			task.finished.connect(_on_task_finished, CONNECT_ONE_SHOT)
+
+	## Runs all the subtasks given to it.
+	func _run() -> void:
+		for task in tasks:
+			task.run()
+
+		await all
+
+
+# MARK: Factories
 #       ███████  █████   ██████ ████████  ██████  ██████  ██ ███████ ███████
 #       ██      ██   ██ ██         ██    ██    ██ ██   ██ ██ ██      ██
 #       █████   ███████ ██         ██    ██    ██ ██████  ██ █████   ███████
@@ -404,14 +517,26 @@ static func DelayFor( seconds : float, _callable : Callable = func(): return, _b
 	task.run()
 	return task
 
+##
 static func CancelAfter( seconds : float, _callable : Callable = func(): return, _bindings : Array = [] ):
 	var task = Timeout.new( seconds, _callable, _bindings )
 	task.run()
 	return task
 
+## Waits for the given signal before calling the callable.
 static func WaitForSignal( sig : Signal, _callable : Callable = func(): return, _bindings : Array = [] ):
 	var task = SigResponse.new( sig, _callable, _bindings )
 	task.run()
 	return task
 
-#endregion
+## Waits for all subtasks to be completed
+static func WhenAll( tasks : Array[GDTask] ):
+	var task = All.new( tasks )
+	task.run()
+	return task
+
+## Waits for any subtask to be completed.
+static func WhenAny( tasks : Array[GDTask] ):
+	var task = Any.new( tasks )
+	task.run()
+	return task

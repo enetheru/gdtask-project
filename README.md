@@ -1,11 +1,11 @@
-```gdscript
-#   ██████  ██████  ████████  █████  ███████ ██   ██
-#  ██       ██   ██    ██    ██   ██ ██      ██  ██
-#  ██   ███ ██   ██    ██    ███████ ███████ █████
-#  ██    ██ ██   ██    ██    ██   ██      ██ ██  ██
-#   ██████  ██████     ██    ██   ██ ███████ ██   ██
-# 
-# ███████████████████████████████████████████████████
+```
+# ╒════════════════════════════════════════════════════════════════════════════╕
+# │              ██████  ██████  ████████  █████  ███████ ██   ██              │
+# │             ██       ██   ██    ██    ██   ██ ██      ██  ██               │
+# │             ██   ███ ██   ██    ██    ███████ ███████ █████                │
+# │             ██    ██ ██   ██    ██    ██   ██      ██ ██  ██               │
+# │              ██████  ██████     ██    ██   ██ ███████ ██   ██              │
+# ╘════════════════════════════════════════════════════════════════════════════╛
 ```
 
 Task object inspired by UniTask
@@ -15,7 +15,7 @@ Task object inspired by UniTask
 I just wanted a nice interface for creating tasks that I was used to from
 UniTask, so I thought how hard can it be to just whip something up for myself.
 
-Its probably trash level code, but so long as it works for me thats ok.
+Its probably trash level code, but so long as it works for me that's ok.
 
 ## Features
 
@@ -32,6 +32,17 @@ Its probably trash level code, but so long as it works for me thats ok.
     - repetition
     - Timeout
 * Tests
+
+```gdscript
+# Creating a task does not start it
+var task = GDTask.new( test_func )
+
+# non blocking, triggers the start of the task
+task.run()
+
+# blocking, waits for the completion of the task
+await task.run()
+```
 
 ## Specialisations
 
@@ -58,14 +69,14 @@ CancelWhen( predicate )
 CancelOn( signal )
 
 
-ascii titles generated using: http://www.patorjk.com/software/taag
 
 ## Wishlist
 
-WhenAll( [] )
+* WhenAll( [] )
+* WhenAny( [] )
+* RPC
+* editor manager node with panel
 
-WhenAny( [] )
+## Acknowledgements
 
-RPC
-
-editor manager node with panel
+* ascii titles generated using: http://www.patorjk.com/software/taag
