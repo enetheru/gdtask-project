@@ -86,17 +86,17 @@ var previous : GDTask
 func _to_string() -> String:
 	# Owner
 	var object = callable.get_object()
-	var owner : String = ("%s." % object.name) if object is Node else ""
+	var owner : String = "{name}.".format(object) if object is Node else ""
 
 	# Method Name
-	var method_name : String = "%s" % callable.get_method() if callable.is_standard() else "lambda"
+	var method_name : String = callable.get_method() if callable.is_standard() else "󰘧"
 	var args : Array[String] = []
 	for arg in bindings:
-		args.append( "%s" % arg )
+		args.append( "'%s'" % Util.trunc(arg) )
 
-	var function : String = "%s%s(%s)" % [owner, method_name, ", ".join(args)]
+	var function : String = "%s%s( %s )" % [owner, method_name, ", ".join(args)]
 
-	return "[%d]%s | %s -> %s" %[id, Status.keys()[status], function, product]
+	return "GDTask[%d] %s | %s -> %s" %[id, Status.keys()[status], function, product]
 
 
 # MARK: _init()
@@ -411,23 +411,28 @@ class SigResponse extends GDTask:
 
 class Any extends GDTask:
 	signal any
+	signal all
 
 	var tasks : Array[GDTask]
+	var finished_tasks : Array[GDTask]
 
 	func _to_string() -> String:
 		return "[%d]%s | sub_tasks: %d" %[id, Status.keys()[status], tasks.size()]
 
-	func _on_task_finished( sub_status : Status ):
+	func _on_task_finished( sub_status : Status, task : GDTask ):
+		finished_tasks.append(task)
+		tasks.erase(task)
 		if status != Status.INPROGRESS: return # we dont care, as our task isnt running.
 		if sub_status == Status.COMPLETED:
 			any.emit()
+		if tasks.is_empty(): all.emit()
 
 	func _init( _tasks : Array[GDTask] ):
 		id = next_id
 		status = Status.PENDING
 		tasks = _tasks
 		for task : GDTask in tasks:
-			task.finished.connect(_on_task_finished)
+			task.finished.connect( _on_task_finished.bind( task ) )
 			# If we happen to pass this task a completed task
 			# then we should mark it as completed too.
 			if task.status == Status.COMPLETED:
@@ -452,34 +457,35 @@ class All extends GDTask:
 	signal all
 
 	var tasks : Array[GDTask]
-	var counter : int = -1
+	var finished_tasks : Array[GDTask]
 
 	func _to_string() -> String:
 		return "[%d]%s | sub_tasks: %d" %[id, Status.keys()[status], tasks.size()]
 
-	func _on_task_finished( sub_status : Status ):
-		counter -= 1
+	func _on_task_finished( sub_status : Status, task : GDTask ):
+		finished_tasks.append(task)
+		tasks.erase(task)
 
 		if status != Status.INPROGRESS: return # we dont care, as our task isnt running.
 
-		if counter <= 0:
-			all.emit()
+		if tasks.is_empty(): all.emit()
 
 		if sub_status == Status.CANCELLED:
 			status = Status.CANCELLED
+			all.emit()
 
 	func _init( _tasks : Array[GDTask] ):
 		id = next_id
 		status = Status.PENDING
 		tasks = _tasks
-		counter = tasks.size()
 		for task : GDTask in tasks:
 			# completed tasks dont count to the total
-			if task.status == Status.COMPLETED:
-				counter -= 1
-				continue
+			match task.status:
+				Status.COMPLETED | Status.CANCELLED:
+					_on_task_finished(task.status, task)
+					continue
 			# Oneshot is used so a task cant be counted twice.
-			task.finished.connect(_on_task_finished, CONNECT_ONE_SHOT)
+			task.finished.connect(_on_task_finished.bind(task), CONNECT_ONE_SHOT)
 
 	## Runs all the subtasks given to it.
 	func _run() -> void:
@@ -487,7 +493,6 @@ class All extends GDTask:
 			task.run()
 
 		await all
-
 
 # MARK: Factories
 #       ███████  █████   ██████ ████████  ██████  ██████  ██ ███████ ███████
