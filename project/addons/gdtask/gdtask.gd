@@ -413,8 +413,8 @@ class Any extends GDTask:
 	signal any
 	signal all
 
-	var tasks : Array[GDTask]
-	var finished_tasks : Array[GDTask]
+	var tasks : Array[GDTask] = []
+	var finished_tasks : Array[GDTask] = []
 
 	func _to_string() -> String:
 		return "[%d]%s | sub_tasks: %d" %[id, Status.keys()[status], tasks.size()]
@@ -432,11 +432,15 @@ class Any extends GDTask:
 		status = Status.PENDING
 		tasks = _tasks
 		for task : GDTask in tasks:
-			task.finished.connect( _on_task_finished.bind( task ) )
-			# If we happen to pass this task a completed task
-			# then we should mark it as completed too.
-			if task.status == Status.COMPLETED:
-				status == Status.COMPLETED
+			append( task )
+
+	func append( task : GDTask ):
+		tasks.append( task )
+		match task.status:
+			Status.COMPLETED | Status.CANCELLED:
+				_on_task_finished(task.status, task)
+				return
+		task.finished.connect( _on_task_finished.bind( task ), CONNECT_ONE_SHOT )
 
 	## Runs all the subtasks given to it.
 	func _run() -> void:
