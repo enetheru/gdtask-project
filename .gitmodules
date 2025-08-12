@@ -1,0 +1,3 @@
+[submodule "project/addons/enetheru.gdtask"]
+	path = project/addons/enetheru.gdtask
+	url = git@gitlab.com:enetheru/gdtask.git
