@@ -14,10 +14,10 @@ func _init( test_runner : RichTextLabel ) -> void:
 
 func run() -> int:
 	print( "running RepeatEvery Tests")
-	
+
 	## GDTask.RepeaterEvery
-	await GDTask.RepeatEvery( 0.1, 5, repeat_func ).finished
+	await GDTaskMgr.RepeatEvery( 0.1, 5, repeat_func ).finished
 	runner.check( "Repeat count is correct", repeat_count, runner.Op.EQUAL,  5 )
-	
-	
+
+
 	return OK
