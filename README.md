@@ -1,82 +1,76 @@
-```
-# ╒════════════════════════════════════════════════════════════════════════════╕
-# │              ██████  ██████  ████████  █████  ███████ ██   ██              │
-# │             ██       ██   ██    ██    ██   ██ ██      ██  ██               │
-# │             ██   ███ ██   ██    ██    ███████ ███████ █████                │
-# │             ██    ██ ██   ██    ██    ██   ██      ██ ██  ██               │
-# │              ██████  ██████     ██    ██   ██ ███████ ██   ██              │
-# ╘════════════════════════════════════════════════════════════════════════════╛
+```gdscript
+# ╒═════════════════════════════════════════════════════════════════════════╕
+# │             ██████  ██████  ████████  █████  ███████ ██   ██            │
+# │            ██       ██   ██    ██    ██   ██ ██      ██  ██             │
+# │            ██   ███ ██   ██    ██    ███████ ███████ █████              │
+# │            ██    ██ ██   ██    ██    ██   ██      ██ ██  ██             │
+# │             ██████  ██████     ██    ██   ██ ███████ ██   ██            │
+# ╘═════════════════════════════════════════════════════════════════════════╛
 ```
 
 Task object inspired by UniTask
 
-## Motivation
-
-I just wanted a nice interface for creating tasks that I was used to from
-UniTask, so I thought how hard can it be to just whip something up for myself.
-
-Its probably trash level code, but so long as it works for me that's ok.
+Inspired by C#'s UniTask, GDTask provides a flexible system for managing asynchronous tasks in Godot, with support for task chaining, cancellation, and multiplayer RPCs. It includes a task manager, specialized task types, and an editor panel for debugging.
 
 ## Features
 
-* Written entirely within gdscript
-* GDTask object
-    - Cancellable
-    - Resettable
-    - run async, or sync
-    - Then
-* Additional Class Specialisations for:
-    - delayed run
-    - wait until 
-    - repetition
-    - repetition
-    - Timeout
-* Tests
+- **Pure GDScript**: No external dependencies, easy to integrate.
+- **GDTask Class**: Core task object with async/sync execution, cancellation, and chaining (e.g., `then()`).
+  - Subclasses: `Delay`, `Repeater`, `Timeout`, `SigResponse`, `Watcher`, `All`, `Any`.
+- **Task Manager**: `GDTaskMgr` orchestrates tasks, especially for multiplayer RPCs with response handling.
+- **Multiplayer RPCs**: `RPCTask` supports remote method calls with response tracking.
+- **Editor Integration**: A bottom panel (`GDTaskPanel`) visualizes active tasks with refresh and cleanup options.
+- **Utilities**: Centralized constants and helpers in `defs.gd`.
 
+## Usage
+
+### Creating and Running Tasks
 ```gdscript
-# Creating a task does not start it
-var task = GDTask.new( test_func )
+# Create a task (does not start automatically)
+var task = GDTask.new(func(): print("Task executed!"))
 
-# non blocking, triggers the start of the task
+# Run non-blocking
 task.run()
 
-# blocking, waits for the completion of the task
+# Run blocking (waits for completion)
 await task.run()
+
+# Chain tasks
+task.then(GDTask.new(func(): print("Next task!")))
 ```
 
-## Specialisations
-
-### WaitUntil
-
-I want to wait until a signal is triggered
-I want to wait until a value is true
-I want to wait until a function returns true.
-Then  I can do something.
-
-The task itself would either be a hold on a function till some predicate described above, or it would start the chain,
-Like:
-
+### Specialized Tasks
 ```gdscript
-GDTask.WaitUntil( predicate ).then( secondary task )
+# Wait until a condition is true
+var task = GDTaskMgr.WaitUntil(func(): return some_node.is_ready())
+await task.run()
+
+# Repeat a task every 2 seconds, 5 times
+GDTaskMgr.RepeatEvery(2.0, 5, func(): print("Repeated!"))
+
+# Delay a task by 3 seconds
+GDTaskMgr.DelayFor(3.0, func(): print("Delayed!"))
+
+# Wait for a signal
+GDTaskMgr.WaitForSignal(some_node.signal_name, func(): print("Signal received!"))
+
+# RPC with response
+var response = await GDTaskMgr.rpc_response(peer_id, some_node, "remote_method", [arg1, arg2])
+print(response.code, response.data)
 ```
 
-### RepeatFor
-A task that repeats on a timed interval, for a set number of times, or endlessly
 
-What about repeating until a predicate is reached, so RepeatUntil.
-It sounds like I want to add a predicate for the cancel function like
-CancelWhen( predicate )
-CancelOn( signal )
+### Task Manager
+```gdscript
+# Add a task to the manager
+var mgr = GDTaskMgr.new()
+add_child(mgr)
+mgr.add_task(GDTask.new(func(): print("Managed task!")), true) # Auto-remove on completion
+```
 
-
-
-## Wishlist
-
-* WhenAll( [] )
-* WhenAny( [] )
-* RPC
-* editor manager node with panel
+## Limitations
+- **Main Thread Only**: Tasks must run on the main thread due to Godot's `await` and signal limitations (see [Godot Issue #79637](https://github.com/godotengine/godot/issues/79637)).
 
 ## Acknowledgements
-
-* ascii titles generated using: http://www.patorjk.com/software/taag
+- ASCII art generated using [patorjk.com](http://www.patorjk.com/software/taag).
+- Inspired by [UniTask](https://github.com/Cysharp/UniTask).
